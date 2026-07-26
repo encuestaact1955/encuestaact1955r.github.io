@@ -1,6 +1,6 @@
-﻿/* ============================================
+/* ============================================
    SERVIDOR PARA GUARDAR UBICACIONES EN CSV LOCAL
-   CON CORS HABILITADO
+   CON CORS HABILITADO - VERSIÓN CORREGIDA
    ============================================ */
 
 const express = require('express');
@@ -13,21 +13,45 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================
-// CORS PARA GITHUB PAGES
+// ✅ CORS CORREGIDO PARA GITHUB PAGES
 // ============================================
 const corsOptions = {
-    origin: [
-        'https://encuestaact1955r.github.io',
-        'http://localhost:3000',
-        'http://localhost:5500'
-    ],
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: function (origin, callback) {
+        // Lista de orígenes permitidos
+        const allowedOrigins = [
+            'https://encuestaact1955r.github.io',
+            'https://encuestaact1955.github.io',
+            'http://localhost:3000',
+            'http://localhost:5500',
+            'http://127.0.0.1:5500'
+        ];
+        
+        // Permitir peticiones sin origen (como Postman o curl)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.warn(`⚠️ Origen no permitido: ${origin}`);
+            callback(null, false);
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
     optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
+
+// ============================================
+// ✅ MIDDLEWARE ADICIONAL PARA LOGS
+// ============================================
+app.use((req, res, next) => {
+    console.log(`📨 ${req.method} ${req.url} - Origen: ${req.headers.origin || 'desconocido'}`);
+    next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -175,7 +199,8 @@ app.get('/api/estado', (req, res) => {
         res.json({
             result: 'estado',
             total: encuestas.length,
-            servidor: 'online'
+            servidor: 'online',
+            cors_origin: req.headers.origin || 'ninguno'
         });
     } catch (error) {
         res.status(500).json({
@@ -192,7 +217,8 @@ app.post('/api/encuesta', (req, res) => {
         console.log('📥 Recibiendo datos:', {
             lat: data.latitud,
             lng: data.longitud,
-            timestamp: data.timestamp_display
+            timestamp: data.timestamp_display,
+            origen: req.headers.origin || 'desconocido'
         });
         
         if (!data.latitud || !data.longitud) {
@@ -273,11 +299,26 @@ app.get('/api/estructura', (req, res) => {
     });
 });
 
+// ============================================
+// ✅ RUTA DE PRUEBA CORS
+// ============================================
+app.options('/api/*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.sendStatus(200);
+});
+
 app.get('/', (req, res) => {
     res.json({
         nombre: 'API Encuestas Geolocalización',
         version: '2.1.0',
         estado: 'online',
+        cors: {
+            configurado: true,
+            origen_actual: req.headers.origin || 'ninguno'
+        },
         endpoints: {
             estado: '/api/estado',
             encuesta: '/api/encuesta (POST)',
@@ -299,6 +340,7 @@ app.listen(PORT, () => {
     console.log(`🚀 Servidor iniciado en puerto ${PORT}`);
     console.log(`🔗 http://localhost:${PORT}`);
     console.log(`📊 CSV: ${CSV_PATH}`);
+    console.log(`🌐 CORS: Permitido para GitHub Pages`);
     console.log('========================================');
 });
 
