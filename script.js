@@ -9,7 +9,7 @@
 
 // Esta variable se define en index.html como CONFIG.SERVER_URL
 // Si no está definida, usa esta como respaldo
-const SERVER_URL = window.CONFIG?.SERVER_URL || 'https://tu-servidor-en-render.onrender.com';
+const SERVER_URL = 'https://encuestaact1955r-github-io.onrender.com';
 
 console.log(`📡 Servidor configurado: ${SERVER_URL}`);
 
